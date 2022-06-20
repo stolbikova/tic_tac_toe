@@ -1,6 +1,6 @@
 import * as React from "react";
 import {useState} from "react";
-import {checkWinner, getEmptyCells, playRobot} from "../utils";
+import {checkWinner, getEmptyCells} from "../utils";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -10,29 +10,48 @@ import Button from "@mui/material/Button";
 import '../App.css';
 import {Column} from './Column';
 import {Cell} from './Cell';
+import {useSelector, shallowEqual} from "react-redux";
+import {TicTacToeState} from "../type";
 
 interface TicTacToeProps {
     scale?: number;
     robotTimeout: number;
+    saveBoard: (scale: number) => {};
+    changeBoard: (col: number, row: number, value: string) => {}
 }
 
-const GET_DEFAULT_BOARD = (scale: number) => new Array(scale).fill(new Array(scale).fill(""));
-
-export function TicTacToe({scale, robotTimeout}: TicTacToeProps) {
-    const [board, setBoard] = React.useState<string [] []>(GET_DEFAULT_BOARD(scale));
+export function TicTacToe({scale, robotTimeout, saveBoard, changeBoard}: TicTacToeProps) {
+    const board: readonly string[][] = useSelector(
+        (state: TicTacToeState) => state.board,
+        shallowEqual
+    )
     const [humanTurn, setHumanTurn] = React.useState<boolean>(true);
     const [winner, setWinner] = useState<'Robot' | 'Human' | 'Tie' | null>(null);
 
     React.useEffect(() => {
-        setBoard(GET_DEFAULT_BOARD(scale));
+        saveBoard(scale);
     }, [scale]);
     React.useEffect(() => {
-        if (getEmptyCells(board)?.length === 0 && !checkWinner(board, scale)) {
+        if (!humanTurn) {
+            setTimeout(() => {
+                let emptyCells: { row: number, col: number } [] = getEmptyCells(JSON.parse(JSON.stringify(board)))
+                const randomIndex: number = Math.floor(Math.random() * emptyCells.length);
+                const randomCell: { row: number, col: number } = emptyCells[randomIndex];
+                changeBoard(randomCell.col, randomCell.row, 'O');
+                setHumanTurn(true);
+            }, robotTimeout)
+        }
+    }, [humanTurn])
+    React.useEffect(() => {
+        const winner = checkWinner(board, scale);
+        if (winner) {
+            setWinner(winner);
+        } else if (getEmptyCells(board)?.length === 0 && !winner) {
             setWinner('Tie');
         }
     }, [board]);
     const handleModalClose = () => {
-        setBoard(GET_DEFAULT_BOARD(scale));
+        saveBoard(scale);
         setHumanTurn(true);
         setWinner(null);
     }
@@ -41,30 +60,8 @@ export function TicTacToe({scale, robotTimeout}: TicTacToeProps) {
             return;
         }
 
-        // deep copy
-        const newBoard: string [][] = JSON.parse(JSON.stringify(board));
-        newBoard[column][row] = 'X';
-        setBoard([...newBoard]);
+        changeBoard(column, row, 'X');
         setHumanTurn(false);
-
-
-        // TODO: check winner
-        if (checkWinner(newBoard, scale) === 'Human') {
-            setWinner('Human');
-            return;
-        }
-
-        setTimeout(() => {
-            // Robot turn
-            const tmpBoard: string [][] = playRobot(newBoard);
-            setBoard([...tmpBoard]);
-
-            if (checkWinner(tmpBoard, scale) === 'Robot') {
-                setWinner('Robot');
-                return;
-            }
-            setHumanTurn(true);
-        }, robotTimeout)
     }
 
     return (

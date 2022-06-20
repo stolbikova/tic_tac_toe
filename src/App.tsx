@@ -43,7 +43,7 @@ export function App() {
                 label="Scale"
                 helperText={error ? "Invalid number. Please enter number >= 3" : ""}
             />
-            <TicTacToe scale={scale} robotTimeout={ROBOT_TIMEOUT}/>
+            <TicTacToe scale={scale} robotTimeout={ROBOT_TIMEOUT} saveBoard={svBoard} changeBoard={chBoard} />
         </div>
     );
 }
